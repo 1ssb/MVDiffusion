@@ -8,6 +8,10 @@ import cv2
 import os
 from generate_video_tool.pano_video_generation import generate_video
 from PIL import Image
+import time
+from thop import profile
+
+
 torch.manual_seed(0)
 
 def get_K_R(FOV, THETA, PHI, height, width):
@@ -38,6 +42,8 @@ def parse_args():
                     action='store_true', help='generate video')
     parser.add_argument('--text_path',
                     type=str, help='text path allow to specify 8 texts')
+    parser.add_argument('--out_dir',
+                    type=str, default='out_paint_example', help='output directory')
 
     return parser.parse_args()
 
@@ -59,6 +65,19 @@ def resize_and_center_crop(img, size):
         margin_r=current_size-margin_l-size
         img=img[:, margin_l:-margin_r]
     return img
+
+def profile_model(model, batch_data):
+    # calculate the number of trainable parameters
+    n_all_params = int(sum([np.prod(p.size()) for p in model.parameters()]))
+    n_trainable_params = int(sum([np.prod(p.size()) for p in filter(lambda p: p.requires_grad, model.parameters())]))
+    print(f"Number of parameters in {model.__class__.__name__}:  {n_trainable_params} / {n_all_params}")
+
+    # profile the model
+    model_infer_func = model.inference
+    ops, params = profile(model, inputs=(batch_data,))
+    print(f"MACs: {ops}, params: {params}")
+    print('FLOPs = ' + str(ops / 1000**3) + 'G')
+    print('Params = ' + str(params / 1000**2) + 'M')
 
 args = parse_args()
 if args.image_path is None:
@@ -90,8 +109,8 @@ Rs=[]
 Ks=[]
 for i in range(8):
     degree = (45*i) % 360
-    K, R = get_K_R(90, degree, 0,
-                    resolution, resolution)
+    K, R = get_K_R(FOV=90, THETA=degree,PHI= 0,
+                    height=resolution, width=resolution)
 
     Rs.append(R)
     Ks.append(K)
@@ -111,8 +130,8 @@ if args.text_path is not None:
     args.text=prompt[0]
 else:
     prompt=[args.text]*8
-K=torch.tensor(Ks).cuda()[None]
-R=torch.tensor(Rs).cuda()[None]
+K=torch.tensor(np.array(Ks)).cuda()[None]
+R=torch.tensor(np.array(Rs)).cuda()[None]
 
 batch= {
         'images': images,
@@ -120,8 +139,12 @@ batch= {
         'R': R,
         'K': K
     }
+
+begin_tms = time.time()
+
 images_pred=model.inference(batch)
-res_dir=args.text[:20]
+# res_dir=args.text[:20]
+res_dir=args.out_dir
 print('save in fold: {}'.format(res_dir))
 os.makedirs(res_dir, exist_ok=True)
 with open(os.path.join(res_dir, 'prompt.txt'), 'w') as f:
@@ -133,3 +156,9 @@ for i in range(8):
     image_paths.append(image_path)
     im.save(image_path)
 generate_video(image_paths, res_dir, args.gen_video)
+
+end_tms = time.time()
+print('time cost: {}'.format(end_tms-begin_tms))
+
+# profile model
+# profile_model(model, batch)

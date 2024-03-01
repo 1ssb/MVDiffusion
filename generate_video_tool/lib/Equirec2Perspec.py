@@ -2,11 +2,13 @@ import os
 import sys
 import cv2
 import numpy as np
+from PIL import Image
 
 class Equirectangular:
     def __init__(self, img_name, text2light=False):
         if isinstance(img_name, str):
-            self._img = cv2.imread(img_name, cv2.IMREAD_COLOR)
+            # self._img = cv2.imread(img_name, cv2.IMREAD_COLOR)
+            self._img = np.array(Image.open(img_name).convert('RGB'))
         else:
             self._img = img_name
         if text2light:

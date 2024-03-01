@@ -19,8 +19,11 @@ def generate_video(image_paths, out_dir, gen_video=True):
                              [90, 180, 0], [90, 225, 0], [90, 270, 0], [90, 315, 0]]
                             )
 
-    new_pano = ee.GetEquirec(2048, 4096)
-    cv2.imwrite(os.path.join(out_dir, 'pano.png'), new_pano.astype(np.uint8)[540:-540])
+    # new_pano = ee.GetEquirec(2048, 4096)
+    # cv2.imwrite(os.path.join(out_dir, 'pano.png'), new_pano.astype(np.uint8)[540:-540])
+    new_pano = ee.GetEquirec(512, 1024)
+    cv2.imwrite(os.path.join(out_dir, 'pano.png'), new_pano.astype(np.uint8))
+
     if not gen_video:
         return
     equ = E2P.Equirectangular(new_pano)
