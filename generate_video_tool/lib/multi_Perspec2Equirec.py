@@ -2,7 +2,7 @@ import os
 import sys
 import cv2
 import numpy as np
-import lib.Perspec2Equirec as P2E
+import generate_video_tool.lib.Perspec2Equirec as P2E
 class Perspective:
     def __init__(self, img_array , F_T_P_array ):
         
